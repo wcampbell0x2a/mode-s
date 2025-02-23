@@ -1021,6 +1021,8 @@ impl fmt::Display for VerticalRateSource {
 #[derive(Debug, PartialEq, Eq, DekuRead, Copy, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct SurfacePosition {
+    #[deku(bits = "5")]
+    pub tc: u8,
     #[deku(bits = "7")]
     pub mov: u8,
     pub s: StatusForGroundTrack,

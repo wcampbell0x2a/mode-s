@@ -18,7 +18,7 @@ use core::{
 #[cfg(not(feature = "alloc"))]
 use std::cmp;
 
-use crate::{Altitude, CPRFormat};
+use crate::{adsb::SurfacePosition, Altitude, CPRFormat};
 
 const NZ: f64 = 15.0;
 const D_LAT_EVEN: f64 = 360.0 / (4.0 * NZ);
@@ -296,6 +296,34 @@ fn get_lat_lon(
         lon -= 360.0;
     }
     (lat, lon)
+}
+
+/// Calculate surface position with a single surface position message (even/odd any)
+/// using a reference latitude and longitude.
+/// The reference point should be within 45 NM of the position.
+pub fn surface_position_with_reference(
+    surface_position: &SurfacePosition,
+    reference_lat_long: (f64, f64),
+) -> Option<Position> {
+    let i = if surface_position.f == CPRFormat::Even { 0.0 } else { 1.0 };
+
+    let cpr_lat = surface_position.lat_cpr as f64 / CPR_MAX;
+    let cpr_lon = surface_position.lon_cpr as f64 / CPR_MAX;
+
+    let dlat = 90.0 / (60.0 - i);
+    let j = (reference_lat_long.0 / dlat).floor()
+        + (((reference_lat_long.0 % dlat) / dlat) - cpr_lat + 0.5).floor();
+
+    let lat = dlat * (j + cpr_lat);
+
+    let nl = cpr_nl(lat);
+    let dlon = 90.0 / std::cmp::max(nl - i as u64, 1) as f64;
+    
+    let m = (reference_lat_long.1 / dlon).floor()
+        + (((reference_lat_long.1 % dlon) / dlon) - cpr_lon + 0.5).floor();
+    let lon = dlon * (m + cpr_lon);
+    
+    Some(Position { latitude: lat, longitude: lon })
 }
 
 #[cfg(test)]
